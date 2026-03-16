@@ -1,0 +1,196 @@
+import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// ── Initial State ────────────────────────────────────────────────────────────
+const initialState = {
+  patient: {
+    name: 'Mrs. Dipali Bhattacharya',
+    age: '62',
+    gender: 'Female',
+    bloodGroup: 'B+',
+    doctor: 'Dr. Rajib Basu',
+    department: 'Orthopaedics',
+    hospitalNo: 'MH012515258',
+    dischargeDate: '13 Mar 2026',
+    procedure: 'Bilateral ORIF – Proximal Humerus',
+    implant: 'Bonetek Titanium',
+    emergencyPhone: '98317 42187',
+    recoveryStartDate: '2026-03-13',
+  },
+  caregivers: [
+    {
+      id: 'c1',
+      name: 'Rohan Bhattacharya',
+      email: 'rohan@email.com',
+      relation: 'Son',
+      nudgeMinutes: 10,
+      active: true,
+      addedAt: new Date().toISOString(),
+    },
+  ],
+  medicines: [
+    { id: 'm1', name: 'Tab. CETIL 500mg',    sessions: ['Morning', 'Night'],              instruction: 'After food',         duration: '7 days',    active: true },
+    { id: 'm2', name: 'Tab. PYRIGESIC 1gm',  sessions: ['Morning', 'Afternoon', 'Night'], instruction: 'After food',         duration: '7 days',    active: true },
+    { id: 'm3', name: 'Tab. PANTIUM 40',     sessions: ['Morning'],                       instruction: 'Before breakfast',   duration: '20 days',   active: true },
+    { id: 'm4', name: 'Tab. CORALIUM D3',    sessions: ['Afternoon'],                     instruction: 'After lunch',        duration: '2 months',  active: true },
+    { id: 'm5', name: 'Cap. UPRISE D3 60K',  sessions: ['Morning'],                       instruction: 'After breakfast (weekly)', duration: '2 months', active: true },
+    { id: 'm6', name: 'Tab. CARTIGEN 1500',  sessions: ['Afternoon'],                     instruction: 'After lunch',        duration: '2 months',  active: true },
+    { id: 'm7', name: 'Tab. STAMLO 10',      sessions: ['Morning'],                       instruction: 'After breakfast',    duration: 'Continue',  active: true },
+    { id: 'm8', name: 'Tab. ROSEDAY F 10',   sessions: ['Night'],                         instruction: 'After dinner',       duration: 'Continue',  active: true },
+    { id: 'm9', name: 'Tab. ONDERO 2.5/500', sessions: ['Morning', 'Night'],              instruction: 'After meals',        duration: 'Continue',  active: true },
+  ],
+  givenDoses: {},      // key: `${medicineId}-${session}-${YYYY-MM-DD}` → true
+  prescriptions: [
+    {
+      id: 'p1',
+      name: 'Discharge Summary – Mar 13, 2026',
+      fileType: 'PDF',
+      uploadedAt: '2026-03-13',
+      tag: 'Orthopaedics',
+      uri: null,
+    },
+  ],
+  checklist: {},       // key: itemId → true/false
+  notifications: [],
+  followUps: [
+    { id: 'f1', title: 'Clips & Dressing Removal', date: '2026-03-27', note: 'At home, 14–16 days from surgery', helpline: '89810 80878', done: false },
+    { id: 'f2', title: 'OPD Review – Dr. Rajib Basu', date: '2026-04-10', note: 'With X-Ray both shoulder joints (AP/Lat)', helpline: '98317 42187', done: false },
+  ],
+};
+
+// ── Reducer ──────────────────────────────────────────────────────────────────
+function appReducer(state, action) {
+  switch (action.type) {
+
+    case 'HYDRATE':
+      return { ...state, ...action.payload };
+
+    case 'UPDATE_PATIENT':
+      return { ...state, patient: { ...state.patient, ...action.payload } };
+
+    case 'ADD_CAREGIVER':
+      return { ...state, caregivers: [...state.caregivers, action.payload] };
+
+    case 'REMOVE_CAREGIVER':
+      return { ...state, caregivers: state.caregivers.filter(c => c.id !== action.payload) };
+
+    case 'UPDATE_CAREGIVER':
+      return {
+        ...state,
+        caregivers: state.caregivers.map(c =>
+          c.id === action.payload.id ? { ...c, ...action.payload.updates } : c
+        ),
+      };
+
+    case 'TOGGLE_DOSE': {
+      const key = action.payload;
+      return {
+        ...state,
+        givenDoses: { ...state.givenDoses, [key]: !state.givenDoses[key] },
+      };
+    }
+
+    case 'ADD_PRESCRIPTION':
+      return { ...state, prescriptions: [action.payload, ...state.prescriptions] };
+
+    case 'DELETE_PRESCRIPTION':
+      return { ...state, prescriptions: state.prescriptions.filter(p => p.id !== action.payload) };
+
+    case 'TOGGLE_CHECKLIST': {
+      const id = action.payload;
+      return { ...state, checklist: { ...state.checklist, [id]: !state.checklist[id] } };
+    }
+
+    case 'TOGGLE_FOLLOWUP':
+      return {
+        ...state,
+        followUps: state.followUps.map(f =>
+          f.id === action.payload ? { ...f, done: !f.done } : f
+        ),
+      };
+
+    case 'ADD_NOTIFICATION':
+      return {
+        ...state,
+        notifications: [action.payload, ...state.notifications].slice(0, 50),
+      };
+
+    case 'CLEAR_NOTIFICATIONS':
+      return { ...state, notifications: [] };
+
+    default:
+      return state;
+  }
+}
+
+// ── Context ──────────────────────────────────────────────────────────────────
+const AppContext = createContext(null);
+
+export function AppProvider({ children }) {
+  const [state, dispatch] = useReducer(appReducer, initialState);
+
+  // Persist state to AsyncStorage on every change
+  useEffect(() => {
+    const persistableKeys = ['patient', 'caregivers', 'givenDoses', 'prescriptions', 'checklist', 'followUps'];
+    const toPersist = Object.fromEntries(persistableKeys.map(k => [k, state[k]]));
+    AsyncStorage.setItem('recoverease_state', JSON.stringify(toPersist)).catch(console.error);
+  }, [state]);
+
+  // Hydrate from AsyncStorage on mount
+  useEffect(() => {
+    AsyncStorage.getItem('recoverease_state').then(raw => {
+      if (raw) {
+        try {
+          dispatch({ type: 'HYDRATE', payload: JSON.parse(raw) });
+        } catch (e) {
+          console.warn('Failed to hydrate state', e);
+        }
+      }
+    });
+  }, []);
+
+  // Helper: today's dose key
+  const doseKey = (medicineId, session) => {
+    const today = new Date().toISOString().split('T')[0];
+    return `${medicineId}-${session}-${today}`;
+  };
+
+  // Selectors
+  const todayDoseCount = state.medicines
+    .filter(m => m.active)
+    .reduce((acc, m) => acc + m.sessions.length, 0);
+
+  const todayGivenCount = state.medicines
+    .filter(m => m.active)
+    .reduce((acc, m) => {
+      return acc + m.sessions.filter(s => state.givenDoses[doseKey(m.id, s)]).length;
+    }, 0);
+
+  const activeCaregivers = state.caregivers.filter(c => c.active);
+
+  const recoveryDay = () => {
+    const start = new Date(state.patient.recoveryStartDate);
+    const now = new Date();
+    return Math.max(1, Math.ceil((now - start) / (1000 * 60 * 60 * 24)));
+  };
+
+  return (
+    <AppContext.Provider value={{
+      state,
+      dispatch,
+      doseKey,
+      todayDoseCount,
+      todayGivenCount,
+      activeCaregivers,
+      recoveryDay,
+    }}>
+      {children}
+    </AppContext.Provider>
+  );
+}
+
+export const useApp = () => {
+  const ctx = useContext(AppContext);
+  if (!ctx) throw new Error('useApp must be used within AppProvider');
+  return ctx;
+};

@@ -1,0 +1,667 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title></title>
+  <meta name="Generator" content="Cocoa HTML Writer">
+  <meta name="CocoaVersion" content="2685.4">
+  <style type="text/css">
+    p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica}
+    p.p2 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica; min-height: 14.0px}
+  </style>
+</head>
+<body>
+<p class="p1">import { useState, useRef } from "react";</p>
+<p class="p2"><br></p>
+<p class="p1">const MEDICINES = [</p>
+<p class="p1"><span class="Apple-converted-space">  </span>{ id:"m1", name:"Tab. CETIL 500mg", times:["Morning","Night"], instruction:"After food", duration:"7 days" },</p>
+<p class="p1"><span class="Apple-converted-space">  </span>{ id:"m2", name:"Tab. PYRIGESIC 1gm", times:["Morning","Afternoon","Night"], instruction:"After food", duration:"7 days" },</p>
+<p class="p1"><span class="Apple-converted-space">  </span>{ id:"m3", name:"Tab. PANTIUM 40", times:["Morning"], instruction:"Before breakfast", duration:"20 days" },</p>
+<p class="p1"><span class="Apple-converted-space">  </span>{ id:"m4", name:"Tab. CORALIUM D3", times:["Afternoon"], instruction:"After lunch", duration:"2 months" },</p>
+<p class="p1"><span class="Apple-converted-space">  </span>{ id:"m5", name:"Tab. STAMLO 10", times:["Morning"], instruction:"After breakfast", duration:"Continue" },</p>
+<p class="p1"><span class="Apple-converted-space">  </span>{ id:"m6", name:"Tab. ROSEDAY F 10", times:["Night"], instruction:"After dinner", duration:"Continue" },</p>
+<p class="p1"><span class="Apple-converted-space">  </span>{ id:"m7", name:"Tab. ONDERO 2.5/500", times:["Morning","Night"], instruction:"After meals", duration:"Continue" },</p>
+<p class="p1">];</p>
+<p class="p2"><br></p>
+<p class="p1">const SESSION_TIMES = { Morning:"08:00 AM", Afternoon:"01:00 PM", Night:"08:00 PM" };</p>
+<p class="p1">const NUDGE_OPTIONS = [5,10,15];</p>
+<p class="p1">const avatarColors = ["#185FA5","#0F6E56","#854F0B","#7c3aed","#993C1D","#3B6D11"];</p>
+<p class="p1">const getColor = i =&gt; avatarColors[i % avatarColors.length];</p>
+<p class="p2"><br></p>
+<p class="p1">const initCaregivers = [</p>
+<p class="p1"><span class="Apple-converted-space">  </span>{ id:"c1", name:"Rohan Bhattacharya", email:"rohan@email.com", relation:"Son", nudge:10, active:true, avatar:"RB" },</p>
+<p class="p1"><span class="Apple-converted-space">  </span>{ id:"c2", name:"Priya Sharma", email:"priya@email.com", relation:"Daughter-in-law", nudge:5, active:true, avatar:"PS" },</p>
+<p class="p1">];</p>
+<p class="p2"><br></p>
+<p class="p1">const initPrescriptions = [</p>
+<p class="p1"><span class="Apple-converted-space">  </span>{ id:"p1", name:"Discharge Summary – Mar 13, 2026", type:"PDF", date:"13 Mar 2026", tag:"Orthopaedics", preview:"📄" },</p>
+<p class="p1">];</p>
+<p class="p2"><br></p>
+<p class="p1">// ── shared tiny components ──────────────────────────────────────────────</p>
+<p class="p1">function Avatar({ label, size=36, colorIdx=0 }) {</p>
+<p class="p1"><span class="Apple-converted-space">  </span>return &lt;div style={{ width:size, height:size, borderRadius:"50%", background:getColor(colorIdx), display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontWeight:500, fontSize:size*0.35, flexShrink:0 }}&gt;{label}&lt;/div&gt;;</p>
+<p class="p1">}</p>
+<p class="p2"><br></p>
+<p class="p1">function Badge({ children, bg, color }) {</p>
+<p class="p1"><span class="Apple-converted-space">  </span>return &lt;span style={{ background:bg, color, borderRadius:20, padding:"3px 10px", fontSize:11, fontWeight:600 }}&gt;{children}&lt;/span&gt;;</p>
+<p class="p1">}</p>
+<p class="p2"><br></p>
+<p class="p1">function SectionTitle({ children }) {</p>
+<p class="p1"><span class="Apple-converted-space">  </span>return &lt;div style={{ fontWeight:600, fontSize:13, color:"#334155", marginBottom:10 }}&gt;{children}&lt;/div&gt;;</p>
+<p class="p1">}</p>
+<p class="p2"><br></p>
+<p class="p1">function Card({ children, style={} }) {</p>
+<p class="p1"><span class="Apple-converted-space">  </span>return &lt;div style={{ background:"#fff", border:"0.5px solid #e2e8f0", borderRadius:12, padding:"14px", marginBottom:10, ...style }}&gt;{children}&lt;/div&gt;;</p>
+<p class="p1">}</p>
+<p class="p2"><br></p>
+<p class="p1">function Toast({ toasts }) {</p>
+<p class="p1"><span class="Apple-converted-space">  </span>return (</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div style={{ position:"fixed", bottom:80, right:16, zIndex:999, display:"flex", flexDirection:"column", gap:8 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>{toasts.map(t =&gt; (</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div key={t.id} style={{ background: t.type==="success"?"#0F6E56":t.type==="warn"?"#854F0B":"#185FA5", color:"#fff", padding:"10px 14px", borderRadius:10, fontSize:12, fontWeight:500, maxWidth:260, display:"flex", gap:8, alignItems:"center" }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;span&gt;{t.type==="success"?"✓":t.type==="warn"?"⏰":"ℹ"}&lt;/span&gt;{t.msg}</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>))}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>);</p>
+<p class="p1">}</p>
+<p class="p2"><br></p>
+<p class="p1">function Modal({ show, onClose, title, subtitle, children }) {</p>
+<p class="p1"><span class="Apple-converted-space">  </span>if (!show) return null;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>return (</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"flex-end", justifyContent:"center", zIndex:200 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;div style={{ background:"#fff", borderRadius:"20px 20px 0 0", padding:"24px 20px 32px", width:"100%", maxWidth:480, maxHeight:"90vh", overflowY:"auto" }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div style={{ width:36, height:4, background:"#e2e8f0", borderRadius:4, margin:"0 auto 20px" }} /&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div style={{ fontWeight:700, fontSize:16, marginBottom:4 }}&gt;{title}&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{subtitle &amp;&amp; &lt;div style={{ fontSize:12, color:"#64748b", marginBottom:18 }}&gt;{subtitle}&lt;/div&gt;}</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{children}</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>);</p>
+<p class="p1">}</p>
+<p class="p2"><br></p>
+<p class="p1">// ── screens ─────────────────────────────────────────────────────────────</p>
+<p class="p1">function HomeScreen({ caregivers, given, setGiven, addToast, addNotif, setScreen }) {</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const [simulating, setSimulating] = useState(null);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const active = caregivers.filter(c=&gt;c.active);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const totalDoses = MEDICINES.reduce((a,m)=&gt;a+m.times.length,0);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const givenCount = Object.values(given).filter(Boolean).length;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const pct = Math.round((givenCount/totalDoses)*100);</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>const simulateNudge = sess =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>setSimulating(sess);</p>
+<p class="p1"><span class="Apple-converted-space">    </span>active.forEach((cg,i)=&gt;{</p>
+<p class="p1"><span class="Apple-converted-space">      </span>setTimeout(()=&gt;{</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const msg = `Nudge → ${cg.name} (${cg.email}) — ${cg.nudge} min before ${sess}`;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>addToast(msg,"warn",5000);</p>
+<p class="p1"><span class="Apple-converted-space">        </span>addNotif(msg);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>}, i*700);</p>
+<p class="p1"><span class="Apple-converted-space">    </span>});</p>
+<p class="p1"><span class="Apple-converted-space">    </span>setTimeout(()=&gt;setSimulating(null), active.length*700+400);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>};</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>const today = new Date().toLocaleDateString("en-IN",{ weekday:"long", day:"numeric", month:"long" });</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>return (</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div style={{ paddingBottom:20 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>{/* Greeting */}</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;div style={{ background:"linear-gradient(135deg,#185FA5 0%,#0C447C 100%)", borderRadius:16, padding:"20px 18px", marginBottom:16, color:"#fff" }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div style={{ fontSize:12, color:"#B5D4F4", marginBottom:4 }}&gt;{today}&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div style={{ fontSize:18, fontWeight:600, marginBottom:2 }}&gt;Good morning 👋&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div style={{ fontSize:13, color:"#B5D4F4", marginBottom:16 }}&gt;Mrs. Dipali's recovery — Day 3&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div style={{ background:"rgba(255,255,255,0.15)", borderRadius:10, padding:"12px 14px" }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;div style={{ display:"flex", justifyContent:"space-between", fontSize:12, color:"#dbeafe", marginBottom:6 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;span&gt;Today's progress&lt;/span&gt;&lt;span&gt;{givenCount}/{totalDoses} doses given&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;div style={{ background:"rgba(255,255,255,0.2)", borderRadius:6, height:8 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div style={{ background:"#fff", width:`${pct}%`, height:"100%", borderRadius:6, transition:"width .4s" }} /&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;div style={{ fontSize:11, color:"#93c5fd", marginTop:5 }}&gt;{pct}% completed&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>{/* Stats */}</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:8, marginBottom:16 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{[</p>
+<p class="p1"><span class="Apple-converted-space">          </span>{ label:"Caregivers", val:active.length, bg:"#E1F5EE", color:"#0F6E56" },</p>
+<p class="p1"><span class="Apple-converted-space">          </span>{ label:"Medicines", val:totalDoses, bg:"#E6F1FB", color:"#185FA5" },</p>
+<p class="p1"><span class="Apple-converted-space">          </span>{ label:"Given today", val:givenCount, bg:"#FAEEDA", color:"#854F0B" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>].map((s,i)=&gt;(</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;div key={i} style={{ background:s.bg, borderRadius:10, padding:"12px 10px", textAlign:"center" }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div style={{ fontSize:22, fontWeight:700, color:s.color }}&gt;{s.val}&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div style={{ fontSize:11, color:s.color, marginTop:2 }}&gt;{s.label}&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>))}</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>{/* Today's sessions quick view */}</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;SectionTitle&gt;Today's Sessions&lt;/SectionTitle&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>{["Morning","Afternoon","Night"].map(sess=&gt;{</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const meds = MEDICINES.filter(m=&gt;m.times.includes(sess));</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const done = meds.filter(m=&gt;given[`${m.id}-${sess}`]).length;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const allDone = done===meds.length;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>return (</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;Card key={sess} style={{ display:"flex", alignItems:"center", gap:12, cursor:"pointer", marginBottom:8 }} &gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div style={{ fontSize:24 }}&gt;{sess==="Morning"?"🌅":sess==="Afternoon"?"☀️":"🌙"}&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div style={{ flex:1 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;div style={{ fontWeight:600, fontSize:13 }}&gt;{sess} &lt;span style={{ color:"#94a3b8", fontWeight:400, fontSize:11 }}&gt;· {SESSION_TIMES[sess]}&lt;/span&gt;&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;div style={{ fontSize:11, color:"#94a3b8" }}&gt;{meds.length} medicines&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div style={{ display:"flex", alignItems:"center", gap:8 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;Badge bg={allDone?"#E1F5EE":"#F1F5F9"} color={allDone?"#0F6E56":"#64748b"}&gt;{done}/{meds.length}&lt;/Badge&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;button onClick={()=&gt;simulateNudge(sess)} disabled={!!simulating||active.length===0}</p>
+<p class="p1"><span class="Apple-converted-space">                </span>style={{ padding:"5px 10px", borderRadius:7, border:"1px solid #B5D4F4", background:"#E6F1FB", color:"#185FA5", fontSize:11, fontWeight:600, cursor:active.length===0?"not-allowed":"pointer" }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>{simulating===sess?"…":"Nudge"}</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/Card&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>})}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>{/* Quick actions */}</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;SectionTitle style={{ marginTop:16 }}&gt;Quick Actions&lt;/SectionTitle&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{[</p>
+<p class="p1"><span class="Apple-converted-space">          </span>{ icon:"👥", label:"Manage Caregivers", screen:"caregivers", bg:"#E6F1FB", color:"#185FA5" },</p>
+<p class="p1"><span class="Apple-converted-space">          </span>{ icon:"💊", label:"Medicine Schedule", screen:"medicines", bg:"#FAEEDA", color:"#854F0B" },</p>
+<p class="p1"><span class="Apple-converted-space">          </span>{ icon:"📋", label:"Recovery Checklist", screen:"checklist", bg:"#E1F5EE", color:"#0F6E56" },</p>
+<p class="p1"><span class="Apple-converted-space">          </span>{ icon:"📅", label:"Follow-up Dates", screen:"followup", bg:"#EEEDFE", color:"#3C3489" },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>].map(a=&gt;(</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;button key={a.screen} onClick={()=&gt;setScreen(a.screen)}</p>
+<p class="p1"><span class="Apple-converted-space">            </span>style={{ background:a.bg, border:"none", borderRadius:12, padding:"16px 14px", display:"flex", alignItems:"center", gap:10, cursor:"pointer", textAlign:"left" }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;span style={{ fontSize:22 }}&gt;{a.icon}&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;span style={{ fontSize:12, fontWeight:600, color:a.color, lineHeight:1.3 }}&gt;{a.label}&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>))}</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>);</p>
+<p class="p1">}</p>
+<p class="p2"><br></p>
+<p class="p1">function ProfileScreen({ addToast }) {</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const [prescriptions, setPrescriptions] = useState(initPrescriptions);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const [showUploadModal, setShowUploadModal] = useState(false);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const [uploadForm, setUploadForm] = useState({ name:"", tag:"", file:null, preview:null });</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const [editProfile, setEditProfile] = useState(false);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const [profile, setProfile] = useState({ name:"Mrs. Dipali Bhattacharya", age:"62", gender:"Female", blood:"B+", doctor:"Dr. Rajib Basu", hospital:"MH012515258", dept:"Orthopaedics", discharge:"13 Mar 2026", phone:"+91 98317 42187" });</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const fileRef = useRef();</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>const handleFile = e =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const f = e.target.files[0];</p>
+<p class="p1"><span class="Apple-converted-space">    </span>if (!f) return;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const preview = f.type.startsWith("image/") ? URL.createObjectURL(f) : null;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>setUploadForm(p=&gt;({ ...p, file:f, preview, name:f.name.replace(/\.[^.]+$/,"") }));</p>
+<p class="p1"><span class="Apple-converted-space">  </span>};</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>const uploadPrescription = () =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>if (!uploadForm.name.trim()) { addToast("Please enter a name","warn"); return; }</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const ext = uploadForm.file ? uploadForm.file.name.split(".").pop().toUpperCase() : "PDF";</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const newP = { id:"p"+Date.now(), name:uploadForm.name, type:ext, date:new Date().toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}), tag:uploadForm.tag||"General", preview: uploadForm.preview ? "🖼" : "📄", imgSrc: uploadForm.preview };</p>
+<p class="p1"><span class="Apple-converted-space">    </span>setPrescriptions(p=&gt;[newP,...p]);</p>
+<p class="p1"><span class="Apple-converted-space">    </span>setUploadForm({ name:"", tag:"", file:null, preview:null });</p>
+<p class="p1"><span class="Apple-converted-space">    </span>setShowUploadModal(false);</p>
+<p class="p1"><span class="Apple-converted-space">    </span>addToast("Prescription uploaded successfully","success");</p>
+<p class="p1"><span class="Apple-converted-space">  </span>};</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>const deleteP = id =&gt; { setPrescriptions(p=&gt;p.filter(x=&gt;x.id!==id)); addToast("Prescription removed","warn"); };</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>return (</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div style={{ paddingBottom:20 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>{/* Profile card */}</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;Card style={{ background:"linear-gradient(135deg,#185FA5,#0C447C)", border:"none", color:"#fff", marginBottom:16 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div style={{ display:"flex", gap:14, alignItems:"center", marginBottom:14 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;div style={{ width:64, height:64, borderRadius:"50%", background:"rgba(255,255,255,0.2)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:24, fontWeight:700, color:"#fff", border:"2px solid rgba(255,255,255,0.4)" }}&gt;DB&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div style={{ fontWeight:700, fontSize:16 }}&gt;{profile.name}&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div style={{ fontSize:12, color:"#B5D4F4" }}&gt;{profile.age} yrs · {profile.gender} · Blood {profile.blood}&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;Badge bg="rgba(255,255,255,0.2)" color="#fff"&gt;Post-Op Recovery&lt;/Badge&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>{[</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{ label:"Doctor", val:profile.doctor },</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{ label:"Department", val:profile.dept },</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{ label:"Hospital No.", val:profile.hospital },</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{ label:"Discharge", val:profile.discharge },</p>
+<p class="p1"><span class="Apple-converted-space">          </span>].map((r,i)=&gt;(</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div key={i} style={{ background:"rgba(255,255,255,0.12)", borderRadius:8, padding:"8px 10px" }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;div style={{ fontSize:10, color:"#93c5fd", marginBottom:2 }}&gt;{r.label}&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;div style={{ fontSize:12, fontWeight:600 }}&gt;{r.val}&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>))}</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;button onClick={()=&gt;setEditProfile(true)} style={{ marginTop:12, width:"100%", padding:"8px", borderRadius:8, border:"1px solid rgba(255,255,255,0.3)", background:"rgba(255,255,255,0.1)", color:"#fff", fontSize:12, fontWeight:600, cursor:"pointer" }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>✏️ Edit Profile</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;/Card&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>{/* Health summary */}</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;SectionTitle&gt;Health Summary&lt;/SectionTitle&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;Card&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{[</p>
+<p class="p1"><span class="Apple-converted-space">          </span>{ label:"Implant", val:"Bonetek Titanium" },</p>
+<p class="p1"><span class="Apple-converted-space">          </span>{ label:"Procedure", val:"Bilateral ORIF – Proximal Humerus" },</p>
+<p class="p1"><span class="Apple-converted-space">          </span>{ label:"Condition at Discharge", val:"Hemodynamically Stable" },</p>
+<p class="p1"><span class="Apple-converted-space">          </span>{ label:"24 hr Assistance", val:"Required" },</p>
+<p class="p1"><span class="Apple-converted-space">          </span>{ label:"Emergency Helpline", val:profile.phone },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>].map((r,i)=&gt;(</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;div key={i} style={{ display:"flex", justifyContent:"space-between", padding:"8px 0", borderBottom: i&lt;4?"0.5px solid #f1f5f9":"none" }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;span style={{ fontSize:12, color:"#64748b" }}&gt;{r.label}&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;span style={{ fontSize:12, fontWeight:600, textAlign:"right", maxWidth:"55%" }}&gt;{r.val}&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>))}</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;/Card&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>{/* Prescriptions */}</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10, marginTop:4 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;SectionTitle&gt;Prescriptions &amp; Documents&lt;/SectionTitle&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;button onClick={()=&gt;setShowUploadModal(true)} style={{ background:"#185FA5", color:"#fff", border:"none", borderRadius:8, padding:"6px 12px", fontSize:11, fontWeight:600, cursor:"pointer" }}&gt;+ Upload&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>{prescriptions.length===0 &amp;&amp; &lt;div style={{ textAlign:"center", color:"#94a3b8", padding:30, fontSize:13 }}&gt;No prescriptions uploaded yet.&lt;/div&gt;}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>{prescriptions.map(p=&gt;(</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;Card key={p.id} style={{ display:"flex", gap:12, alignItems:"center" }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;div style={{ width:46, height:46, borderRadius:10, background: p.imgSrc?"#000":"#E6F1FB", display:"flex", alignItems:"center", justifyContent:"center", fontSize:22, overflow:"hidden", flexShrink:0 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{p.imgSrc ? &lt;img src={p.imgSrc} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} /&gt; : p.preview}</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;div style={{ flex:1, minWidth:0 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div style={{ fontWeight:600, fontSize:13, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}&gt;{p.name}&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div style={{ fontSize:11, color:"#94a3b8" }}&gt;{p.date} · {p.type}&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;Badge bg="#E1F5EE" color="#0F6E56"&gt;{p.tag}&lt;/Badge&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;div style={{ display:"flex", flexDirection:"column", gap:6 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;button style={{ padding:"5px 10px", borderRadius:7, border:"1px solid #B5D4F4", background:"#E6F1FB", color:"#185FA5", fontSize:11, cursor:"pointer", fontWeight:600 }}&gt;View&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;button onClick={()=&gt;deleteP(p.id)} style={{ padding:"5px 10px", borderRadius:7, border:"1px solid #F7C1C1", background:"#FCEBEB", color:"#A32D2D", fontSize:11, cursor:"pointer", fontWeight:600 }}&gt;Delete&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/Card&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>))}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>{/* Upload Modal */}</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;Modal show={showUploadModal} onClose={()=&gt;setShowUploadModal(false)} title="Upload Prescription" subtitle="Upload a prescription image or PDF document."&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;input ref={fileRef} type="file" accept="image/*,.pdf" style={{ display:"none" }} onChange={handleFile} /&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div onClick={()=&gt;fileRef.current.click()} style={{ border:"2px dashed #B5D4F4", borderRadius:12, padding:"24px", textAlign:"center", cursor:"pointer", background:"#f8fafc", marginBottom:14 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>{uploadForm.preview</p>
+<p class="p1"><span class="Apple-converted-space">            </span>? &lt;img src={uploadForm.preview} alt="" style={{ maxHeight:120, borderRadius:8, maxWidth:"100%" }} /&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>: &lt;div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;div style={{ fontSize:32, marginBottom:6 }}&gt;{uploadForm.file?"📄":"📤"}&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;div style={{ fontSize:13, color:"#185FA5", fontWeight:600 }}&gt;{uploadForm.file ? uploadForm.file.name : "Tap to choose file"}&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;div style={{ fontSize:11, color:"#94a3b8" }}&gt;Image or PDF supported&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;/div&gt;}</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div style={{ marginBottom:12 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;label style={{ fontSize:12, fontWeight:500, color:"#475569", display:"block", marginBottom:4 }}&gt;Document Name *&lt;/label&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;input value={uploadForm.name} onChange={e=&gt;setUploadForm(p=&gt;({...p,name:e.target.value}))} placeholder="e.g. Discharge Summary Mar 2026" style={{ width:"100%", padding:"9px 12px", borderRadius:8, border:"1px solid #cbd5e1", fontSize:13, boxSizing:"border-box" }} /&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div style={{ marginBottom:18 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;label style={{ fontSize:12, fontWeight:500, color:"#475569", display:"block", marginBottom:4 }}&gt;Category / Tag&lt;/label&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;select value={uploadForm.tag} onChange={e=&gt;setUploadForm(p=&gt;({...p,tag:e.target.value}))} style={{ width:"100%", padding:"9px 12px", borderRadius:8, border:"1px solid #cbd5e1", fontSize:13, boxSizing:"border-box" }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;option value=""&gt;Select category&lt;/option&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{["Orthopaedics","Cardiology","Discharge Summary","Lab Report","X-Ray","Pharmacy","General"].map(t=&gt;&lt;option key={t}&gt;{t}&lt;/option&gt;)}</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/select&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div style={{ display:"flex", gap:8 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;button onClick={()=&gt;setShowUploadModal(false)} style={{ flex:1, padding:10, borderRadius:8, border:"1px solid #e2e8f0", background:"#f8fafc", cursor:"pointer", fontSize:13, color:"#64748b" }}&gt;Cancel&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;button onClick={uploadPrescription} style={{ flex:2, padding:10, borderRadius:8, border:"none", background:"#185FA5", color:"#fff", cursor:"pointer", fontSize:13, fontWeight:600 }}&gt;Upload Document&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;/Modal&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>{/* Edit Profile Modal */}</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;Modal show={editProfile} onClose={()=&gt;setEditProfile(false)} title="Edit Patient Profile"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{[{k:"name",l:"Full Name"},{k:"age",l:"Age"},{k:"blood",l:"Blood Group"},{k:"doctor",l:"Doctor Name"},{k:"phone",l:"Emergency Phone"}].map(f=&gt;(</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;div key={f.k} style={{ marginBottom:12 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;label style={{ fontSize:12, fontWeight:500, color:"#475569", display:"block", marginBottom:4 }}&gt;{f.l}&lt;/label&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;input value={profile[f.k]} onChange={e=&gt;setProfile(p=&gt;({...p,[f.k]:e.target.value}))} style={{ width:"100%", padding:"9px 12px", borderRadius:8, border:"1px solid #cbd5e1", fontSize:13, boxSizing:"border-box" }} /&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>))}</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div style={{ display:"flex", gap:8, marginTop:4 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;button onClick={()=&gt;setEditProfile(false)} style={{ flex:1, padding:10, borderRadius:8, border:"1px solid #e2e8f0", background:"#f8fafc", cursor:"pointer", fontSize:13, color:"#64748b" }}&gt;Cancel&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;button onClick={()=&gt;{ setEditProfile(false); addToast("Profile updated","success"); }} style={{ flex:2, padding:10, borderRadius:8, border:"none", background:"#185FA5", color:"#fff", cursor:"pointer", fontSize:13, fontWeight:600 }}&gt;Save Changes&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;/Modal&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>);</p>
+<p class="p1">}</p>
+<p class="p2"><br></p>
+<p class="p1">function CaregiversScreen({ caregivers, setCaregivers, addToast, addNotif }) {</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const [showAdd, setShowAdd] = useState(false);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const [editNudge, setEditNudge] = useState(null);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const [removeConfirm, setRemoveConfirm] = useState(null);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const [form, setForm] = useState({ name:"", email:"", relation:"", nudge:10 });</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const [formErr, setFormErr] = useState({});</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>const validate = () =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const err={};</p>
+<p class="p1"><span class="Apple-converted-space">    </span>if (!form.name.trim()) err.name="Required";</p>
+<p class="p1"><span class="Apple-converted-space">    </span>if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) err.email="Valid email required";</p>
+<p class="p1"><span class="Apple-converted-space">    </span>if (!form.relation.trim()) err.relation="Required";</p>
+<p class="p1"><span class="Apple-converted-space">    </span>setFormErr(err); return !Object.keys(err).length;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>};</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>const add = () =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>if (!validate()) return;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const av = form.name.trim().split(" ").map(w=&gt;w[0]).join("").slice(0,2).toUpperCase();</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const cg = { id:"c"+Date.now(), ...form, name:form.name.trim(), email:form.email.trim(), relation:form.relation.trim(), active:true, avatar:av };</p>
+<p class="p1"><span class="Apple-converted-space">    </span>setCaregivers(p=&gt;[...p,cg]);</p>
+<p class="p1"><span class="Apple-converted-space">    </span>setForm({ name:"", email:"", relation:"", nudge:10 }); setFormErr({});</p>
+<p class="p1"><span class="Apple-converted-space">    </span>setShowAdd(false);</p>
+<p class="p1"><span class="Apple-converted-space">    </span>addToast(`${cg.name} added`,"success");</p>
+<p class="p1"><span class="Apple-converted-space">    </span>addNotif(`Caregiver added: ${cg.name} (${cg.email})`);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>};</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>const remove = id =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const cg = caregivers.find(c=&gt;c.id===id);</p>
+<p class="p1"><span class="Apple-converted-space">    </span>setCaregivers(p=&gt;p.filter(c=&gt;c.id!==id));</p>
+<p class="p1"><span class="Apple-converted-space">    </span>setRemoveConfirm(null);</p>
+<p class="p1"><span class="Apple-converted-space">    </span>addToast(`${cg.name} removed`,"warn");</p>
+<p class="p1"><span class="Apple-converted-space">    </span>addNotif(`Caregiver removed: ${cg.name}`);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>};</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>const updateNudge = (id,val) =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>setCaregivers(p=&gt;p.map(c=&gt;c.id===id?{...c,nudge:val}:c));</p>
+<p class="p1"><span class="Apple-converted-space">    </span>setEditNudge(null);</p>
+<p class="p1"><span class="Apple-converted-space">    </span>addToast("Nudge timing updated","success");</p>
+<p class="p1"><span class="Apple-converted-space">  </span>};</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>const toggle = id =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const cg = caregivers.find(c=&gt;c.id===id);</p>
+<p class="p1"><span class="Apple-converted-space">    </span>setCaregivers(p=&gt;p.map(c=&gt;c.id===id?{...c,active:!c.active}:c));</p>
+<p class="p1"><span class="Apple-converted-space">    </span>addToast(`${cg.name} ${cg.active?"paused":"activated"}`, "info");</p>
+<p class="p1"><span class="Apple-converted-space">  </span>};</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>return (</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div style={{ paddingBottom:20 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;SectionTitle&gt;Caregivers ({caregivers.length})&lt;/SectionTitle&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;button onClick={()=&gt;setShowAdd(true)} style={{ background:"#185FA5", color:"#fff", border:"none", borderRadius:8, padding:"7px 13px", fontSize:12, fontWeight:600, cursor:"pointer" }}&gt;+ Add&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>{caregivers.length===0 &amp;&amp; &lt;div style={{ textAlign:"center", color:"#94a3b8", padding:40, fontSize:13 }}&gt;No caregivers added yet.&lt;br/&gt;Tap + Add to get started.&lt;/div&gt;}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>{caregivers.map((cg,i)=&gt;(</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;Card key={cg.id} style={{ opacity:cg.active?1:0.65, border:`1px solid ${cg.active?"#B5D4F4":"#e2e8f0"}` }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;div style={{ display:"flex", gap:12, alignItems:"center", marginBottom:12 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;Avatar label={cg.avatar} size={44} colorIdx={i} /&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div style={{ flex:1 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;div style={{ fontWeight:600, fontSize:14 }}&gt;{cg.name}&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;Badge bg={cg.active?"#E1F5EE":"#f1f5f9"} color={cg.active?"#0F6E56":"#94a3b8"}&gt;{cg.active?"Active":"Paused"}&lt;/Badge&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;div style={{ fontSize:12, color:"#64748b" }}&gt;{cg.relation}&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;div style={{ fontSize:12, color:"#185FA5" }}&gt;✉ {cg.email}&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;div style={{ background:"#f8fafc", borderRadius:8, padding:"10px 12px", marginBottom:10 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div style={{ fontSize:11, color:"#475569", fontWeight:500, marginBottom:6 }}&gt;⏰ Nudge before medicine time&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{editNudge===cg.id ? (</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;div style={{ display:"flex", gap:6 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>{NUDGE_OPTIONS.map(n=&gt;(</p>
+<p class="p1"><span class="Apple-converted-space">                  </span>&lt;button key={n} onClick={()=&gt;updateNudge(cg.id,n)} style={{ flex:1, padding:"7px", borderRadius:8, border:`1.5px solid ${cg.nudge===n?"#185FA5":"#e2e8f0"}`, background:cg.nudge===n?"#185FA5":"#fff", color:cg.nudge===n?"#fff":"#334155", fontSize:12, fontWeight:600, cursor:"pointer" }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>{n} min</p>
+<p class="p1"><span class="Apple-converted-space">                  </span>&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>))}</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;button onClick={()=&gt;setEditNudge(null)} style={{ padding:"7px 10px", borderRadius:8, border:"1px solid #e2e8f0", background:"#fff", fontSize:11, cursor:"pointer", color:"#64748b" }}&gt;✕&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>) : (</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;div style={{ display:"flex", alignItems:"center", gap:10 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;Badge bg="#FAEEDA" color="#854F0B"&gt;{cg.nudge} minutes before&lt;/Badge&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;button onClick={()=&gt;setEditNudge(cg.id)} style={{ fontSize:11, color:"#185FA5", background:"none", border:"none", cursor:"pointer", textDecoration:"underline" }}&gt;Change&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>)}</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;div style={{ display:"flex", gap:7 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;button onClick={()=&gt;toggle(cg.id)} style={{ flex:1, padding:"7px", borderRadius:7, border:"1px solid #e2e8f0", background:"#fff", fontSize:11, cursor:"pointer", color:cg.active?"#854F0B":"#0F6E56", fontWeight:500 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>{cg.active?"⏸ Pause":"▶ Activate"}</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;button onClick={()=&gt;addToast(`Test nudge sent to ${cg.name}`,"info")} style={{ flex:1, padding:"7px", borderRadius:7, border:"1px solid #B5D4F4", background:"#E6F1FB", fontSize:11, cursor:"pointer", color:"#185FA5", fontWeight:500 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>📧 Test Nudge</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;button onClick={()=&gt;setRemoveConfirm(cg.id)} style={{ padding:"7px 12px", borderRadius:7, border:"1px solid #F7C1C1", background:"#FCEBEB", fontSize:11, cursor:"pointer", color:"#A32D2D", fontWeight:500 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>🗑</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/Card&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>))}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>{/* Add Modal */}</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;Modal show={showAdd} onClose={()=&gt;setShowAdd(false)} title="Add Caregiver" subtitle="They will receive nudges before each medicine session."&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{[{k:"name",l:"Full Name",ph:"e.g. Rohan Bhattacharya",t:"text"},{k:"email",l:"Email Address",ph:"e.g. rohan@email.com",t:"email"},{k:"relation",l:"Relation to Patient",ph:"e.g. Son, Nurse, Friend",t:"text"}].map(f=&gt;(</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;div key={f.k} style={{ marginBottom:12 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;label style={{ fontSize:12, fontWeight:500, color:"#475569", display:"block", marginBottom:4 }}&gt;{f.l}&lt;/label&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;input type={f.t} placeholder={f.ph} value={form[f.k]} onChange={e=&gt;setForm(p=&gt;({...p,[f.k]:e.target.value}))}</p>
+<p class="p1"><span class="Apple-converted-space">              </span>style={{ width:"100%", padding:"9px 12px", borderRadius:8, border:`1px solid ${formErr[f.k]?"#E24B4A":"#cbd5e1"}`, fontSize:13, boxSizing:"border-box" }} /&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{formErr[f.k]&amp;&amp;&lt;div style={{ color:"#E24B4A", fontSize:11, marginTop:2 }}&gt;{formErr[f.k]}&lt;/div&gt;}</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>))}</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div style={{ marginBottom:18 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;label style={{ fontSize:12, fontWeight:500, color:"#475569", display:"block", marginBottom:6 }}&gt;⏰ Nudge Timing&lt;/label&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;div style={{ display:"flex", gap:8 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{NUDGE_OPTIONS.map(n=&gt;(</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;button key={n} onClick={()=&gt;setForm(p=&gt;({...p,nudge:n}))} style={{ flex:1, padding:"9px", borderRadius:8, border:`1.5px solid ${form.nudge===n?"#185FA5":"#e2e8f0"}`, background:form.nudge===n?"#185FA5":"#fff", color:form.nudge===n?"#fff":"#334155", fontSize:13, fontWeight:600, cursor:"pointer" }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>{n} min</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>))}</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div style={{ display:"flex", gap:8 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;button onClick={()=&gt;{setShowAdd(false);setFormErr({});}} style={{ flex:1, padding:10, borderRadius:8, border:"1px solid #e2e8f0", background:"#f8fafc", cursor:"pointer", fontSize:13, color:"#64748b" }}&gt;Cancel&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;button onClick={add} style={{ flex:2, padding:10, borderRadius:8, border:"none", background:"#185FA5", color:"#fff", cursor:"pointer", fontSize:13, fontWeight:600 }}&gt;Add Caregiver&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;/Modal&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>{/* Remove Confirm */}</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;Modal show={!!removeConfirm} onClose={()=&gt;setRemoveConfirm(null)} title="Remove Caregiver?"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div style={{ fontSize:13, color:"#64748b", marginBottom:20 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;strong&gt;{caregivers.find(c=&gt;c.id===removeConfirm)?.name}&lt;/strong&gt; will no longer receive nudges.</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div style={{ display:"flex", gap:8 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;button onClick={()=&gt;setRemoveConfirm(null)} style={{ flex:1, padding:10, borderRadius:8, border:"1px solid #e2e8f0", background:"#f8fafc", cursor:"pointer", fontSize:13, color:"#64748b" }}&gt;Cancel&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;button onClick={()=&gt;remove(removeConfirm)} style={{ flex:1, padding:10, borderRadius:8, border:"none", background:"#E24B4A", color:"#fff", cursor:"pointer", fontSize:13, fontWeight:600 }}&gt;Remove&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;/Modal&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>);</p>
+<p class="p1">}</p>
+<p class="p2"><br></p>
+<p class="p1">function MedicinesScreen({ given, setGiven, addToast }) {</p>
+<p class="p1"><span class="Apple-converted-space">  </span>return (</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div style={{ paddingBottom:20 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;SectionTitle&gt;Medicine Schedule — Today&lt;/SectionTitle&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>{["Morning","Afternoon","Night"].map(sess=&gt;{</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const meds = MEDICINES.filter(m=&gt;m.times.includes(sess));</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const done = meds.filter(m=&gt;given[`${m.id}-${sess}`]).length;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>return (</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;div key={sess} style={{ marginBottom:18 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8, padding:"8px 12px", background: sess==="Morning"?"#FAEEDA":sess==="Afternoon"?"#E6F1FB":"#EEEDFE", borderRadius:9 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;div style={{ fontWeight:600, fontSize:13, color: sess==="Morning"?"#854F0B":sess==="Afternoon"?"#185FA5":"#534AB7" }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>{sess==="Morning"?"🌅":sess==="Afternoon"?"☀️":"🌙"} {sess} · {SESSION_TIMES[sess]}</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;Badge bg="#fff" color="#64748b"&gt;{done}/{meds.length} given&lt;/Badge&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{meds.map(med=&gt;{</p>
+<p class="p1"><span class="Apple-converted-space">              </span>const key=`${med.id}-${sess}`; const isDone=!!given[key];</p>
+<p class="p1"><span class="Apple-converted-space">              </span>return (</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;Card key={key} style={{ display:"flex", alignItems:"center", gap:10, background:isDone?"#f0fdf4":"#fff", border:`0.5px solid ${isDone?"#86efac":"#e2e8f0"}`, marginBottom:6 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                  </span>&lt;div style={{ flex:1 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;div style={{ fontWeight:500, fontSize:13, textDecoration:isDone?"line-through":"none", color:isDone?"#86efac":"inherit" }}&gt;{med.name}&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;div style={{ fontSize:11, color:"#94a3b8" }}&gt;{med.instruction} · {med.duration}&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                  </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                  </span>&lt;button onClick={()=&gt;{ setGiven(p=&gt;({...p,[key]:!p[key]})); if(!isDone) addToast(`${med.name} marked given`,"success"); }}</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>style={{ padding:"6px 12px", borderRadius:7, border:"none", background:isDone?"#dcfce7":"#185FA5", color:isDone?"#15803d":"#fff", fontSize:11, fontWeight:600, cursor:"pointer" }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>{isDone?"✅ Given":"Mark Given"}</p>
+<p class="p1"><span class="Apple-converted-space">                  </span>&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;/Card&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>})}</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>})}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>);</p>
+<p class="p1">}</p>
+<p class="p2"><br></p>
+<p class="p1">function ChecklistScreen({ addToast }) {</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const items = [</p>
+<p class="p1"><span class="Apple-converted-space">    </span>{ cat:"🩺 Medical", items:["Prescription medications","Wound care supplies","Ice packs / cold therapy wraps","Thermometer","Waterproof wound covers"] },</p>
+<p class="p1"><span class="Apple-converted-space">    </span>{ cat:"🦾 Mobility", items:["Bilateral arm slings","Shoulder immobilizers","Grab bars / non-slip mats","Long-handled reacher/grabber","Button hook &amp; zipper pull"] },</p>
+<p class="p1"><span class="Apple-converted-space">    </span>{ cat:"🛁 Hygiene", items:["Shower chair","Handheld showerhead","Long-handled bath brush","Dry shampoo","Electric toothbrush"] },</p>
+<p class="p1"><span class="Apple-converted-space">    </span>{ cat:"👗 Clothing", items:["Front-opening shirts","Elastic waistband pants","Slip-on / Velcro shoes"] },</p>
+<p class="p1"><span class="Apple-converted-space">    </span>{ cat:"🏠 Home Safety", items:["Remove trip hazards","Nightlights installed","Non-slip footwear","Items at waist height"] },</p>
+<p class="p1"><span class="Apple-converted-space">  </span>];</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const allItems = items.flatMap((s,si)=&gt;s.items.map((item,ii)=&gt;({ id:`${si}-${ii}`, item, cat:s.cat })));</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const [checked, setChecked] = useState({});</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const done = Object.values(checked).filter(Boolean).length;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const pct = Math.round((done/allItems.length)*100);</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>return (</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div style={{ paddingBottom:20 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;div style={{ background:"#E6F1FB", borderRadius:10, padding:"12px 14px", marginBottom:14 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div style={{ display:"flex", justifyContent:"space-between", fontSize:12, color:"#185FA5", marginBottom:6 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;span style={{ fontWeight:600 }}&gt;Recovery Checklist&lt;/span&gt;&lt;span&gt;{done}/{allItems.length} done&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div style={{ background:"#B5D4F4", borderRadius:6, height:8 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;div style={{ background:"#185FA5", width:`${pct}%`, height:"100%", borderRadius:6, transition:"width .4s" }} /&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>{items.map((sec,si)=&gt;(</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div key={si} style={{ marginBottom:14 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;div style={{ fontWeight:600, fontSize:12, color:"#64748b", marginBottom:6, padding:"4px 0", borderBottom:"0.5px solid #e2e8f0" }}&gt;{sec.cat}&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>{sec.items.map((item,ii)=&gt;{</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const id=`${si}-${ii}`; const isDone=!!checked[id];</p>
+<p class="p1"><span class="Apple-converted-space">            </span>return (</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;div key={id} onClick={()=&gt;{ setChecked(p=&gt;({...p,[id]:!p[id]})); if(!isDone) addToast(`"${item}" checked off`,"success"); }}</p>
+<p class="p1"><span class="Apple-converted-space">                </span>style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 2px", borderBottom:"0.5px solid #f1f5f9", cursor:"pointer" }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;div style={{ width:20, height:20, borderRadius:5, border:`2px solid ${isDone?"#16a34a":"#cbd5e1"}`, background:isDone?"#16a34a":"#fff", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, transition:"all .2s" }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                  </span>{isDone &amp;&amp; &lt;span style={{ color:"#fff", fontSize:12, fontWeight:700 }}&gt;✓&lt;/span&gt;}</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;span style={{ fontSize:13, textDecoration:isDone?"line-through":"none", color:isDone?"#94a3b8":"inherit" }}&gt;{item}&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>);</p>
+<p class="p1"><span class="Apple-converted-space">          </span>})}</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>))}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>);</p>
+<p class="p1">}</p>
+<p class="p2"><br></p>
+<p class="p1">function FollowUpScreen({ addToast }) {</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const [appointments, setAppointments] = useState([</p>
+<p class="p1"><span class="Apple-converted-space">    </span>{ id:"a1", title:"Clips &amp; Dressing Removal", date:"27 Mar 2026", note:"At home, 14–16 days from surgery", done:false, color:"#0F6E56", bg:"#E1F5EE", helpline:"89810 80878" },</p>
+<p class="p1"><span class="Apple-converted-space">    </span>{ id:"a2", title:"OPD Review – Dr. Rajib Basu", date:"10 Apr 2026", note:"With X-Ray both shoulder joints (AP/Lat)", done:false, color:"#185FA5", bg:"#E6F1FB", helpline:"98317 42187" },</p>
+<p class="p1"><span class="Apple-converted-space">  </span>]);</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>return (</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div style={{ paddingBottom:20 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;SectionTitle&gt;Follow-Up Schedule&lt;/SectionTitle&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>{appointments.map(a=&gt;(</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;Card key={a.id} style={{ border:`1px solid ${a.bg}` }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:8 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;div style={{ fontWeight:600, fontSize:13 }}&gt;{a.title}&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;div style={{ fontSize:12, color:"#94a3b8", marginTop:2 }}&gt;{a.note}&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;Badge bg={a.bg} color={a.color}&gt;{a.date}&lt;/Badge&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;div style={{ fontSize:11, color:"#64748b", marginBottom:10 }}&gt;📞 Helpline: {a.helpline}&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;button onClick={()=&gt;{ setAppointments(p=&gt;p.map(x=&gt;x.id===a.id?{...x,done:!x.done}:x)); addToast(a.done?"Marked pending":"Appointment completed","success"); }}</p>
+<p class="p1"><span class="Apple-converted-space">            </span>style={{ width:"100%", padding:"7px", borderRadius:8, border:`1px solid ${a.done?"#86efac":"#B5D4F4"}`, background:a.done?"#f0fdf4":"#E6F1FB", color:a.done?"#15803d":"#185FA5", fontSize:12, fontWeight:600, cursor:"pointer" }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{a.done?"✅ Completed — tap to undo":"Mark as Completed"}</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/Card&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>))}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;SectionTitle style={{ marginTop:4 }}&gt;Daily Physiotherapy&lt;/SectionTitle&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>{[{ title:"Grip &amp; Elbow Exercise", freq:"Daily · Morning &amp; Evening" },{ title:"Shoulder Pendular Exercise", freq:"Daily · Morning &amp; Evening" }].map((e,i)=&gt;(</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;Card key={i} style={{ display:"flex", gap:12, alignItems:"center" }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;div style={{ width:40, height:40, borderRadius:10, background:"#EEEDFE", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20 }}&gt;🏋️&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div style={{ fontWeight:600, fontSize:13 }}&gt;{e.title}&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div style={{ fontSize:11, color:"#94a3b8" }}&gt;{e.freq}&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/Card&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>))}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>);</p>
+<p class="p1">}</p>
+<p class="p2"><br></p>
+<p class="p1">// ── ROOT APP ─────────────────────────────────────────────────────────────</p>
+<p class="p1">export default function App() {</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const [screen, setScreen] = useState("home");</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const [caregivers, setCaregivers] = useState(initCaregivers);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const [given, setGiven] = useState({});</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const [toasts, setToasts] = useState([]);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const [notifs, setNotifs] = useState([]);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const toastRef = useRef(0);</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>const addToast = (msg, type="success", dur=3500) =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const id=++toastRef.current;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>setToasts(p=&gt;[...p,{id,msg,type}]);</p>
+<p class="p1"><span class="Apple-converted-space">    </span>setTimeout(()=&gt;setToasts(p=&gt;p.filter(t=&gt;t.id!==id)),dur);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>};</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const addNotif = msg =&gt; setNotifs(p=&gt;[{id:Date.now(),msg,time:new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})},...p].slice(0,30));</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>const navItems = [</p>
+<p class="p1"><span class="Apple-converted-space">    </span>{ key:"home", icon:"🏠", label:"Home" },</p>
+<p class="p1"><span class="Apple-converted-space">    </span>{ key:"medicines", icon:"💊", label:"Medicines" },</p>
+<p class="p1"><span class="Apple-converted-space">    </span>{ key:"caregivers", icon:"👥", label:"Caregivers" },</p>
+<p class="p1"><span class="Apple-converted-space">    </span>{ key:"checklist", icon:"📋", label:"Checklist" },</p>
+<p class="p1"><span class="Apple-converted-space">    </span>{ key:"profile", icon:"👤", label:"Profile" },</p>
+<p class="p1"><span class="Apple-converted-space">  </span>];</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>const screenTitles = { home:"RecoverEase", profile:"Patient Profile", caregivers:"Caregivers", medicines:"Medicine Schedule", checklist:"Recovery Checklist", followup:"Follow-Up &amp; Physio" };</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>return (</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div style={{ fontFamily:"sans-serif", maxWidth:420, margin:"0 auto", background:"#f8fafc", minHeight:"100vh", position:"relative", fontSize:14 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>{/* Status bar */}</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;div style={{ background:"#0C447C", padding:"8px 20px 6px", display:"flex", justifyContent:"space-between", alignItems:"center" }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;span style={{ color:"#93c5fd", fontSize:11 }}&gt;{new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;span style={{ color:"#93c5fd", fontSize:11 }}&gt;●●●● WiFi 🔋&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>{/* App header */}</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;div style={{ background:"#185FA5", padding:"12px 16px", display:"flex", justifyContent:"space-between", alignItems:"center" }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div style={{ display:"flex", alignItems:"center", gap:10 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>{screen!=="home" &amp;&amp; &lt;button onClick={()=&gt;setScreen("home")} style={{ background:"rgba(255,255,255,0.15)", border:"none", color:"#fff", borderRadius:8, padding:"4px 8px", cursor:"pointer", fontSize:16, lineHeight:1 }}&gt;‹&lt;/button&gt;}</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div style={{ color:"#fff", fontWeight:600, fontSize:15 }}&gt;{screenTitles[screen]||"RecoverEase"}&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{screen==="home"&amp;&amp;&lt;div style={{ color:"#B5D4F4", fontSize:11 }}&gt;Mrs. Dipali Bhattacharya&lt;/div&gt;}</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div style={{ display:"flex", gap:8, alignItems:"center" }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;div style={{ position:"relative", cursor:"pointer" }} onClick={()=&gt;addToast(`${notifs.length} activity items`,"info")}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div style={{ width:32, height:32, borderRadius:"50%", background:"rgba(255,255,255,0.15)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:15 }}&gt;🔔&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{notifs.length&gt;0&amp;&amp;&lt;div style={{ position:"absolute", top:-2, right:-2, background:"#E24B4A", color:"#fff", borderRadius:"50%", width:14, height:14, fontSize:9, fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center" }}&gt;{notifs.length&gt;9?"9+":notifs.length}&lt;/div&gt;}</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>{/* Screen content */}</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;div style={{ padding:"16px 16px 0", overflowY:"auto", maxHeight:"calc(100vh - 170px)" }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{screen==="home"<span class="Apple-converted-space">    </span>&amp;&amp; &lt;HomeScreen caregivers={caregivers} given={given} setGiven={setGiven} addToast={addToast} addNotif={addNotif} setScreen={setScreen} /&gt;}</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{screen==="profile" &amp;&amp; &lt;ProfileScreen addToast={addToast} /&gt;}</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{screen==="caregivers" &amp;&amp; &lt;CaregiversScreen caregivers={caregivers} setCaregivers={setCaregivers} addToast={addToast} addNotif={addNotif} /&gt;}</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{screen==="medicines" &amp;&amp; &lt;MedicinesScreen given={given} setGiven={setGiven} addToast={addToast} /&gt;}</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{screen==="checklist" &amp;&amp; &lt;ChecklistScreen addToast={addToast} /&gt;}</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{screen==="followup" &amp;&amp; &lt;FollowUpScreen addToast={addToast} /&gt;}</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>{/* Bottom nav */}</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;div style={{ position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)", width:"100%", maxWidth:420, background:"#fff", borderTop:"0.5px solid #e2e8f0", display:"flex", zIndex:50 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{navItems.map(n=&gt;(</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;button key={n.key} onClick={()=&gt;setScreen(n.key)}</p>
+<p class="p1"><span class="Apple-converted-space">            </span>style={{ flex:1, padding:"8px 4px 10px", border:"none", background:"none", cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:2 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;span style={{ fontSize:18, filter: screen===n.key?"none":"grayscale(1) opacity(0.5)" }}&gt;{n.icon}&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;span style={{ fontSize:9, color:screen===n.key?"#185FA5":"#94a3b8", fontWeight:screen===n.key?600:400 }}&gt;{n.label}&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>))}</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;Toast toasts={toasts} /&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>);</p>
+<p class="p1">}</p>
+</body>
+</html>
