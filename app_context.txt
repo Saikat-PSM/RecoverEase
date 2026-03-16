@@ -4,11 +4,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // ── Initial State ────────────────────────────────────────────────────────────
 const initialState = {
   patient: {
-    name: 'Mrs. Dipali Bhattacharya',
+    name: 'Mr. John Doe',
     age: '62',
     gender: 'Female',
     bloodGroup: 'B+',
-    doctor: 'Dr. Rajib Basu',
+    doctor: 'Dr. Malcolm Speed',
     department: 'Orthopaedics',
     hospitalNo: 'MH012515258',
     dischargeDate: '13 Mar 2026',
